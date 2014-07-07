@@ -1,7 +1,8 @@
 <?php
 
 define("SECRET_TOKEN", "BetterChangeThisOneHere");
-define("ALLOWED_IPS", "94.45.140.46,207.97.227.253,50.57.128.197");//default github push ips
+define("ALLOWED_IPS", "192.30.252.0/22"); // see https://help.github.com/articles/what-ip-addresses-does-github-use-that-i-should-whitelist
+//"94.45.140.46,207.97.227.253,50.57.128.197"  //==> old github push ips
 
 define("ZIP_FILENAME", "latest.zip");
 define("EXTRACT_FOLDER", "latest");
@@ -18,23 +19,49 @@ class Config {
         500 => "Internal Server Error"
     );
     private $allowed_ips;
-    private $secret;
 
     function __construct() {
-        $this->secret = sha1(SECRET_TOKEN);
-        $this->allowed_ips = explode(",", ALLOWED_IPS);
+        // handle CIDR notation for ips (only last net segment)
+        $this->allowed_ips = array();
+        foreach (explode(",", ALLOWED_IPS) as $ip) {
+            if(!(strpos($ip,"/"))) {
+                array_push($this->allowed_ips, $ip);
+            } else {
+                $pos = strripos($ip, ".");
+                $newIP = substr($ip, 0, $pos);
+                $rest = substr($ip, $pos+1, strlen($ip));
+                echo "rest:".$rest;
+                $bounds = explode("/",$rest);
+                for ($i=$bounds[0]; $i<=$bounds[1] ; $i++) { 
+                   array_push($this->allowed_ips, $newIP.".".$i);
+                }
+            }
+        }
     }
 
-    function verify() {
+    function verify($payload) {
         // check IP
         if (!(in_array($_SERVER["REMOTE_ADDR"], $this->allowed_ips))) {
             $this->errorResponse(403);
         }
         // check signature
         $signature = $_SERVER["HTTP_X_HUB_SIGNATURE"];
-        if (!(isset($signature) && $signature === $this->secret)) {
+        if(!(isset($payload))||!(isset($signature))) {
+            $this->errorResponse(403, "missing payload");
+        }
+
+        $secret = "sha1=".hash_hmac('sha1', $input, SECRET_TOKEN);
+        if ( $signature === $secret ) {
             $this->errorResponse(403);
         }
+    }
+
+    function setPayload($input) {
+        $this->verify($input);
+        $this->json = json_decode($input, true);
+        if (!isset($this->json, $this->json["release"], $this->json["release"]["zipball_url"])) {
+            $this->errorResponse(400, "wrong payload - github release event (application/json) expected");
+        }        
     }
 
     /* helper function processing http error status message */
@@ -54,13 +81,7 @@ class Config {
         }
         die();
     }
-
-    function checkJson() {
-        if (!isset($this->json, $this->json["release"], $this->json["release"]["zipball_url"])) {
-            $this->errorResponse(400, "wrong payload - github release event (application/json) expected");
-        }
-    }
-    
+   
     function remoteUrl() {
         if(isset($this->json)) {
             return $this->json["release"]["zipball_url"];
