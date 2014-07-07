@@ -29,8 +29,7 @@ class Config {
             } else {
                 $pos = strripos($ip, ".");
                 $newIP = substr($ip, 0, $pos);
-                $rest = substr($ip, $pos+1, strlen($ip));
-                echo "rest:".$rest;
+                $rest = substr($ip, $pos+1, strlen($ip));               
                 $bounds = explode("/",$rest);
                 for ($i=$bounds[0]; $i<=$bounds[1] ; $i++) { 
                    array_push($this->allowed_ips, $newIP.".".$i);
@@ -53,6 +52,11 @@ class Config {
         $secret = "sha1=".hash_hmac('sha1', $input, SECRET_TOKEN);
         if ( $signature === $secret ) {
             $this->errorResponse(403);
+        }
+
+        // handle ping
+        if($_SERVER["HTTP_X_GitHub_Event"] === "ping") {
+            $this->errorResponse(200, "ping successfull (checks passed)");
         }
     }
 
