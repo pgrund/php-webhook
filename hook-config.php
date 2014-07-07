@@ -53,15 +53,16 @@ class Config {
         if ( $signature === $secret ) {
             $this->errorResponse(403);
         }
-
-        // handle ping
-        if($_SERVER["HTTP_X_GitHub_Event"] === "ping") {
-            $this->errorResponse(200, "ping successfull (checks passed)");
-        }
     }
 
     function setPayload($input) {
         $this->verify($input);
+
+         // handle ping
+        if($_SERVER["HTTP_X_GITHUB_EVENT"] === "ping") {
+            $this->errorResponse(200, "ping successfull (checks passed)");
+        }
+
         $this->json = json_decode($input, true);
         if (!isset($this->json, $this->json["release"], $this->json["release"]["zipball_url"])) {
             $this->errorResponse(400, "wrong payload - github release event (application/json) expected");
