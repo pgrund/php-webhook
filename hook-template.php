@@ -4,6 +4,7 @@
     </head>
      <body>
       <h1>Latest</h1>
+      <p>last run took place at <em><?=date ("F d Y H:i:s.", filemtime(ZIP_FILENAME));?></em></p>
 <?php
 	if (isset($config->json)) {
 ?>
