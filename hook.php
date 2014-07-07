@@ -23,13 +23,11 @@ function deleteDir($dir) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
-    // handle security
-    $config->verify();
-
-    // get post data and process json
+    // get post data
     $input = file_get_contents('php://input');
-    $config->json = json_decode($input, true);
-    $config->checkJson();
+
+    // process payload (security check, json processing)
+    $config->setPayload($input);
 
     // copy remote zip file locally
     $file = $config->remoteUrl();   
@@ -52,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $zip->extractTo(".");
             $zip->close();
 
-            // rename folder
+            // delete old version and rename extracted folder
             if (file_exists("./".EXTRACT_FOLDER)) {
                 deleteDir("./".EXTRACT_FOLDER);
             }
