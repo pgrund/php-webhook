@@ -61,7 +61,7 @@ class Config {
         }
         //check signature
         $secret = "sha1=".hash_hmac('sha1', $payload, SECRET_TOKEN);
-        if ( $signature === $secret ) {
+        if ( strcmp($signature, $secret ) != 0 ) {
             $this->httpResponse(403);
         }
     }
@@ -83,7 +83,11 @@ class Config {
         if (!isset($this->json, $this->json["release"], $this->json["release"]["zipball_url"])) {
             $this->httpResponse(400, "wrong payload - github release event (application/json) expected");
         }        
-    }
+
+        // write github url to file
+        $github = "github.url";
+        file_put_contents($github, $this->json["repository"]["html_url"]);
+    }    
 
    /**
     * return http statuscode.
